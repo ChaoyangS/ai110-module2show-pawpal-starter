@@ -51,3 +51,31 @@ PawPal+ now includes improved planner behavior:
 - Filtering methods allow querying tasks by completion state and pet name (`filter_tasks(completed=..., pet_name=...)`).
 - Sort utilities expose behavior for both task lengths (`sort_by_time`) and scheduled clock order (`sort_scheduled_by_time`).
 - The plan generation is resilient: it returns warnings (not crashes) when task conflicts are detected.
+
+## Testing PawPal+
+
+### Running the tests
+
+```bash
+python -m pytest
+```
+
+### What the tests cover
+
+| Area | Tests |
+|---|---|
+| **Sorting correctness** | `sort_scheduled_by_time()` returns tasks in chronological order; `organize_tasks()` places the longest task first; both hold with a single-task list |
+| **Recurrence logic** | Daily tasks advance `next_due_date` by 1 day; weekly by 7 days; monthly by 30 days; calling `mark_complete()` twice advances correctly; `is_due_today()` returns `True` on the due date and `False` before it |
+| **Conflict detection** | Two tasks at the same start time are flagged with a `CONFLICT` warning; non-overlapping tasks produce no warnings; a single task never conflicts with itself |
+| **Edge cases** | A pet with no tasks returns an empty plan without crashing; tasks that exceed `available_time` are skipped and noted in `reasoning`; a full happy-path plan schedules all tasks when time allows |
+
+### Confidence level
+
+**3 / 5 stars**
+
+The core scheduling behaviors — sorting, recurrence, and conflict detection — are well-covered and working. Confidence is held back by a few known gaps:
+
+- The duplicate `filter_tasks()` method (defined twice in `pawpal_system.py`) means only the second definition is active; the first is silently shadowed.
+- Monthly recurrence uses a fixed 30-day approximation, which drifts for real calendar months.
+- `available_time` is stored in hours but compared against task durations in minutes, so any mismatch in unit assumptions would cause silent scheduling errors.
+- No tests yet cover the Streamlit UI layer or multi-pet conflict scenarios across different pets.
