@@ -1,0 +1,74 @@
+classDiagram
+    class Frequency {
+        <<enumeration>>
+        DAILY
+        WEEKLY
+        MONTHLY
+    }
+
+    class Task {
+        +description: string
+        +time: int
+        +frequency: Frequency
+        +completion_status: bool
+        +next_due_date: date
+        +mark_complete(completion_date)
+        +is_due_today(check_date): bool
+    }
+
+    class ScheduledTask {
+        +task: Task
+        +start_time: string
+    }
+
+    class Pet {
+        +name: string
+        +type: string
+        +age: int
+        +special_needs: list
+        +tasks: list[Task]
+        +add_task(task)
+        +get_pending_tasks(): list[Task]
+    }
+
+    class Owner {
+        +name: string
+        +available_time: int
+        +preferences: dict
+        +pets: list[Pet]
+        +add_pet(pet)
+        +get_all_tasks(): list[Task]
+        +update_preferences(preferences)
+        +get_available_time(): int
+    }
+
+    class DailyPlan {
+        +date: date
+        +scheduled_tasks: list[ScheduledTask]
+        +total_time: int
+        +reasoning: string
+        +display_plan(): string
+        +add_task_to_plan(task, time)
+        +validate_plan(): bool
+    }
+
+    class Scheduler {
+        +owner: Owner
+        +constraints: dict
+        +generate_daily_plan(date): DailyPlan
+        +get_due_tasks(check_date): list[Task]
+        +organize_tasks(tasks): list[Task]
+        +sort_by_time(tasks): list[Task]
+        +sort_scheduled_by_time(scheduled_tasks): list[ScheduledTask]
+        +filter_tasks(completed, pet_name): list[Task]
+        +detect_conflicts(scheduled_tasks): list[string]
+        +explain_plan(plan): string
+    }
+
+    Task --> Frequency : uses
+    Pet "1" --> "many" Task : owns
+    Owner "1" --> "many" Pet : owns
+    ScheduledTask --> Task : wraps
+    DailyPlan "1" --> "many" ScheduledTask : contains
+    Scheduler --> Owner : references
+    Scheduler --> DailyPlan : generates

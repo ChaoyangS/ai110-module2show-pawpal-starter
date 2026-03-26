@@ -42,62 +42,7 @@ Based on brainstorming the main objects needed for the PawPal+ system, the follo
 
 **UML Class Diagram**
 
-```mermaid
-classDiagram
-    class Owner {
-        +name: string
-        +available_time: int
-        +preferences: dict
-        +update_preferences(preferences)
-        +get_available_time(): int
-    }
-
-    class Pet {
-        +name: string
-        +type: string
-        +age: int
-        +special_needs: list
-        +get_care_requirements(): list
-    }
-
-    class CareTask {
-        +name: string
-        +duration: int
-        +priority: string
-        +task_type: string
-        +frequency: string
-        +dependencies: list
-        +is_due_today(date): bool
-        +calculate_priority_score(): int
-    }
-
-    class Scheduler {
-        +owner: Owner
-        +pet: Pet
-        +tasks_list: list[CareTask]
-        +constraints: dict
-        +generate_daily_plan(date): DailyPlan
-        +optimize_schedule(tasks): list
-        +explain_plan(plan): string
-    }
-
-    class DailyPlan {
-        +date: date
-        +scheduled_tasks: list[dict]
-        +total_time: int
-        +reasoning: string
-        +display_plan(): string
-        +add_task_to_plan(task, time)
-        +validate_plan(): bool
-    }
-
-    Owner --> Pet : has
-    Scheduler --> Owner : has
-    Scheduler --> Pet : has
-    Scheduler --> CareTask : manages
-    Scheduler --> DailyPlan : generates
-    DailyPlan --> CareTask : contains scheduled
-```
+See [uml_final.png](uml_final.png) for the final diagram.
 
 **b. Design changes**
 
@@ -127,8 +72,13 @@ Based on the README.md, the three core actions a user should be able to perform 
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers two main constraints:
+
+1. **Available time** — the owner's `available_time` (in hours) is converted to minutes and used as a hard cap. Tasks are skipped if adding them would exceed this limit. This was treated as the most important constraint because a schedule that overruns the owner's day is useless regardless of how well the tasks are ordered.
+
+2. **Task recurrence and due date** — only tasks where `check_date >= next_due_date` are included in a given day's plan. This prevents tasks from appearing every day when they are weekly or monthly.
+
+Priority as a field (`high`/`medium`/`low`) was planned in the initial UML but was dropped during implementation. The greedy sort by duration (longest first) acts as an implicit proxy for priority — longer tasks like grooming or vet visits naturally get scheduled before quick ones like feeding — but there is no explicit priority ranking. This was a deliberate simplification to keep the MVP deliverable and testable within the project scope.
 
 **b. Tradeoffs**
 
@@ -151,13 +101,20 @@ While more sophisticated algorithms could optimize for factors like task priorit
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+AI was used at every stage of the project:
+
+- **Design review** — asked the AI to analyze the final `pawpal_system.py` and identify what had changed from the initial UML, producing a concrete diff of renamed classes, dropped attributes, and new methods.
+- **Test generation** — described the edge cases (pet with no tasks, two tasks at the same time, `available_time = 0`) and asked the AI to draft pytest functions covering happy paths and boundary conditions.
+- **UI wiring** — asked the AI to update `app.py` to call `sort_by_time()`, `sort_scheduled_by_time()`, and `detect_conflicts()` directly, and to surface conflict warnings as individual `st.warning` cards rather than a buried string.
+- **Debugging** — used the AI to diagnose why `python app.py` crashed (session state requires `streamlit run`) and to identify the duplicate `elif st.button()` pattern causing widget errors.
+
+The most useful prompt pattern was being specific about *what the code should do* rather than *how*: for example, "surface each conflict as a separate warning card so the owner can act on them one at a time" produced better UI code than "add conflict warnings to the app."
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+One moment where the AI suggestion was not accepted as-is: when the AI generated the UML final diagram, it initially kept `CareTask` as the class name and included `priority` and `dependencies` attributes that were never implemented. Before accepting, the actual `pawpal_system.py` was checked line by line to confirm the real class name (`Task`), the real attributes (`description`, `time`, `frequency`, `completion_status`, `next_due_date`), and the real methods. The diagram was corrected to match the implementation rather than the original design intent.
+
+Similarly, the AI flagged the duplicate `filter_tasks()` method as a known gap — this was verified by searching the file and confirming that Python silently uses the second definition, making the first dead code.
 
 ---
 
@@ -165,13 +122,24 @@ While more sophisticated algorithms could optimize for factors like task priorit
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+Thirteen pytest functions were written across four areas:
+
+1. **Sorting correctness** — verified that `sort_scheduled_by_time()` returns tasks in chronological order and that `organize_tasks()` always puts the longest task first, including with a single-item list.
+2. **Recurrence logic** — confirmed that `mark_complete()` advances `next_due_date` by the correct interval for daily (1 day), weekly (7 days), and monthly (30 days) frequencies, that calling it twice compounds correctly, and that `is_due_today()` returns the right boolean on and before the due date.
+3. **Conflict detection** — verified that two tasks sharing a start time produce exactly one conflict warning containing "CONFLICT", that non-overlapping tasks produce an empty list, and that a single task never conflicts with itself.
+4. **Edge cases** — confirmed that a pet with no tasks returns an empty plan without raising an exception, that tasks exceeding `available_time` are skipped and noted in `reasoning`, and that a full happy-path plan schedules all tasks and sets reasoning to "All due tasks scheduled."
+
+These tests mattered because the scheduler's core value — producing a reliable daily plan — depends on all four behaviors working correctly together. A bug in sorting would produce the wrong task order; a bug in recurrence would flood the schedule with tasks that aren't due; a missed conflict would leave the owner with an impossible plan.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+**3 / 5** — the core logic is correct and tested, but three known gaps limit confidence:
+
+- The duplicate `filter_tasks()` method means only the second definition is active; the first is silently dead code.
+- Monthly recurrence uses a fixed 30-day approximation, which drifts over real calendar months (e.g., February completions will schedule the next occurrence too late).
+- `available_time` is stored in hours but task durations are in minutes; the conversion (`* 60`) happens in `generate_daily_plan()` — any caller that passes minutes directly would silently schedule the wrong amount of work.
+
+Next tests to write: multi-pet conflict detection (tasks from two different pets overlapping), `available_time = 0` (no tasks should be scheduled), and marking a monthly task complete in January (due date should land in February, not overflow).
 
 ---
 
@@ -179,12 +147,18 @@ While more sophisticated algorithms could optimize for factors like task priorit
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The part of the project most satisfying is the conflict detection and how it surfaces in the UI. `detect_conflicts()` performs a clean pairwise comparison and returns structured warning strings that include both task names, their time windows, and whether the conflict is same-pet or cross-pet. In the Streamlit app, each conflict becomes its own `st.warning` card — the owner sees exactly which two tasks clash and when, rather than a generic error message. The backend logic and the UI presentation ended up well matched.
+
+The recurrence engine also worked cleanly: a single `mark_complete()` call advances the due date correctly across all three frequencies, and `is_due_today()` acts as a simple gate that keeps the daily plan lean without needing any additional filtering logic.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+Two things stand out for a next iteration:
+
+1. **Add explicit task priority** — the initial UML planned for `high`/`medium`/`low` priority but it was dropped. The greedy sort by duration is a rough substitute, but a short high-priority task (e.g., medication) can get buried behind long low-priority ones. A two-key sort (priority first, then duration) would produce more clinically correct schedules.
+
+2. **Fix the hours/minutes unit boundary** — `available_time` is stored in hours but compared against task durations in minutes. The conversion is done in one place (`generate_daily_plan`), but this is a fragile contract. A cleaner design would store `available_time` in minutes throughout, or use a dedicated type/wrapper so the unit is enforced at the boundary rather than assumed.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The most important thing learned is that **UML diagrams should describe what was built, not what was planned**. The initial diagram included `priority`, `task_type`, and `dependencies` on `CareTask` — none of which were implemented. Keeping a stale diagram creates a false picture of the system for anyone reading it later. Updating the diagram at the end of the project (renaming `CareTask` to `Task`, removing unused attributes, adding `ScheduledTask` and `Frequency`) turned it from a design sketch into an accurate reference. Treating the UML as a living document rather than a one-time deliverable makes it genuinely useful.

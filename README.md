@@ -42,6 +42,43 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## 📸 Demo
+
+<a href="/course_images/ai110/ai110-module2show-pawpal-starter/pawpal_screenshot.png" target="_blank"><img src='/course_images/ai110/ai110-module2show-pawpal-starter/pawpal_screenshot.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>
+
+## Features
+
+### Scheduling algorithms
+
+- **Greedy longest-first scheduling** — `organize_tasks()` sorts due tasks by duration descending before placing them, so longer commitments (walks, grooming) claim the best time slots early in the day.
+- **Chronological sort** — `sort_scheduled_by_time()` re-orders the generated plan by clock time so the displayed schedule always reads 8:00 AM → 9:00 AM → … regardless of insertion order.
+- **Shortest-first sort** — `sort_by_time()` provides an alternative ascending-duration view used in the task list UI.
+
+### Recurrence engine
+
+- **Daily recurrence** — marking a task complete advances `next_due_date` by 1 day via `timedelta`.
+- **Weekly recurrence** — advances `next_due_date` by 7 days.
+- **Monthly recurrence** — advances `next_due_date` by 30 days (approximate).
+- Tasks skip scheduling automatically when `check_date < next_due_date`, so completed tasks stay off the plan until they are genuinely due again.
+
+### Conflict detection
+
+- `detect_conflicts()` performs pairwise overlap checks across all scheduled tasks and returns human-readable warning strings.
+- Warnings identify both tasks by name, their overlapping time windows, and whether the conflict is within the same pet or across different pets.
+- The Streamlit UI surfaces each conflict as a distinct `st.warning` card so owners can act on them individually.
+
+### Filtering
+
+- `filter_tasks(completed, pet_name)` queries tasks across all pets by completion state, pet name, or both combined.
+
+### Time-constraint enforcement
+
+- Tasks that would exceed the owner's `available_time` are skipped during plan generation and listed explicitly in the plan's `reasoning` field.
+
+### Multi-pet support
+
+- An owner can have multiple pets; `get_all_tasks()` aggregates tasks across all of them for unified scheduling and conflict checking.
+
 ## Smarter Scheduling
 
 PawPal+ now includes improved planner behavior:
@@ -62,12 +99,12 @@ python -m pytest
 
 ### What the tests cover
 
-| Area | Tests |
-|---|---|
-| **Sorting correctness** | `sort_scheduled_by_time()` returns tasks in chronological order; `organize_tasks()` places the longest task first; both hold with a single-task list |
-| **Recurrence logic** | Daily tasks advance `next_due_date` by 1 day; weekly by 7 days; monthly by 30 days; calling `mark_complete()` twice advances correctly; `is_due_today()` returns `True` on the due date and `False` before it |
-| **Conflict detection** | Two tasks at the same start time are flagged with a `CONFLICT` warning; non-overlapping tasks produce no warnings; a single task never conflicts with itself |
-| **Edge cases** | A pet with no tasks returns an empty plan without crashing; tasks that exceed `available_time` are skipped and noted in `reasoning`; a full happy-path plan schedules all tasks when time allows |
+| Area                    | Tests                                                                                                                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sorting correctness** | `sort_scheduled_by_time()` returns tasks in chronological order; `organize_tasks()` places the longest task first; both hold with a single-task list                                                          |
+| **Recurrence logic**    | Daily tasks advance `next_due_date` by 1 day; weekly by 7 days; monthly by 30 days; calling `mark_complete()` twice advances correctly; `is_due_today()` returns `True` on the due date and `False` before it |
+| **Conflict detection**  | Two tasks at the same start time are flagged with a `CONFLICT` warning; non-overlapping tasks produce no warnings; a single task never conflicts with itself                                                  |
+| **Edge cases**          | A pet with no tasks returns an empty plan without crashing; tasks that exceed `available_time` are skipped and noted in `reasoning`; a full happy-path plan schedules all tasks when time allows              |
 
 ### Confidence level
 
