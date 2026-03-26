@@ -1,10 +1,12 @@
 import pytest
 from pawpal_system import Task, Pet, Frequency
+from datetime import date, timedelta
 
 
 def test_task_completion():
-    """Test that calling mark_complete() changes the task's completion status."""
+    """Test that calling mark_complete() sets the next due date and resets completion status."""
     task = Task("Test Task", 30, Frequency.DAILY)
+    original_next_due = task.next_due_date
     
     # Initially, task should not be completed
     assert task.completion_status == False
@@ -12,8 +14,10 @@ def test_task_completion():
     # Mark as complete
     task.mark_complete()
     
-    # Now it should be completed
-    assert task.completion_status == True
+    # After marking complete, completion_status should be False (ready for next occurrence)
+    # but next_due_date should be updated
+    assert task.completion_status == False
+    assert task.next_due_date == original_next_due + timedelta(days=1)
 
 
 def test_task_addition():

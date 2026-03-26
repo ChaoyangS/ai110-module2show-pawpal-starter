@@ -132,8 +132,18 @@ Based on the README.md, the three core actions a user should be able to perform 
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+**Sequential Greedy Scheduling vs. Optimal Multi-Constraint Optimization**
+
+The scheduler uses a simple greedy algorithm that sorts tasks by duration (longest first) and schedules them sequentially starting at 8:00 AM, only skipping tasks that would exceed the owner's available time. This approach prioritizes simplicity and predictability over finding the mathematically optimal schedule.
+
+**Why this tradeoff is reasonable:**
+
+- **Performance**: For typical pet care scenarios (5-15 daily tasks), the greedy approach is computationally efficient and runs in O(n log n) time due to sorting, making it suitable for real-time scheduling without noticeable delays.
+- **Predictability**: Pet owners prefer consistent, understandable schedules over complex optimizations they can't easily predict or explain.
+- **Maintainability**: Simple algorithms are easier to debug, test, and modify as pet care needs evolve.
+- **Sufficiency**: For most pet care routines, scheduling longer tasks first (like walks or grooming) followed by shorter tasks (like feeding or medication) creates naturally logical daily flows that work well in practice.
+
+While more sophisticated algorithms could optimize for factors like task priority, pet energy levels, or owner preferences, the current approach provides reliable, human-readable schedules that pet owners can easily understand and adjust manually when needed.
 
 ---
 
